@@ -22,11 +22,23 @@ Knows your PATH train route, your walk time to the station, and your commute win
 ## Project structure
 
 ```
-commute-tracker/
-├── config.js     # Your commute settings and API URL — edit this
-├── index.html    # App logic and UI (single file, no build step)
-├── proxy.py      # Local dev proxy (adds required headers for PANYNJ API)
-└── worker.js     # Cloudflare Worker for production deployment
+commute-buddy/
+├── web/                        # Web app (GitHub Pages)
+│   ├── index.html              # App UI and logic — no build step
+│   ├── config.js               # Your commute settings — edit this
+│   ├── manifest.json           # PWA manifest (home screen install)
+│   ├── icon.png                # Home screen icon
+│   └── proxy.py               # Local dev proxy (not deployed)
+├── worker/                     # Cloudflare Worker
+│   ├── worker.js               # Proxy that adds required PANYNJ headers
+│   └── wrangler.toml           # Wrangler config — deploy with `wrangler deploy`
+├── mac/                        # macOS menu bar app — SwiftUI (future)
+├── ios/                        # iOS app + widget — SwiftUI (future)
+├── .github/workflows/
+│   └── deploy.yml              # Deploys web/ to GitHub Pages on push
+├── .gitignore
+├── LICENSE
+└── README.md
 ```
 
 ---
@@ -38,6 +50,7 @@ The PANYNJ API requires a `Referer` header that a browser can't forge directly, 
 **Terminal 1 — start the data proxy:**
 
 ```bash
+cd web
 python3 proxy.py
 # PATH proxy → http://localhost:8787
 ```
@@ -45,6 +58,7 @@ python3 proxy.py
 **Terminal 2 — serve the app:**
 
 ```bash
+cd web
 python3 -m http.server 3000
 ```
 
@@ -56,7 +70,7 @@ Then open **http://localhost:3000** in your browser.
 
 ## Configuration
 
-All settings live in `config.js`:
+All settings live in `web/config.js`:
 
 ```js
 const CONFIG = {
@@ -111,10 +125,11 @@ wrangler login
 **Deploy:**
 
 ```bash
-wrangler deploy worker.js --name path-commute-proxy --compatibility-date 2025-01-01
+cd worker
+wrangler deploy
 ```
 
-Wrangler prints a `*.workers.dev` URL. Paste it into `config.js`:
+Wrangler prints a `*.workers.dev` URL. Paste it into `web/config.js`:
 
 ```js
 const API_URL = 'https://path-commute-proxy.commutebuddy.workers.dev';
