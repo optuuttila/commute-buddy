@@ -1,2 +1,26 @@
+# Wrangler
 .wrangler/
 worker/.wrangler/
+
+# Environment / secrets — NEVER commit these
+.env
+.env.*
+*.secret
+secrets.json
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Xcode (for future mac/ and ios/ targets)
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Node
+node_modules/
+npm-debug.log*
