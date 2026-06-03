@@ -1,0 +1,16 @@
+{
+  "name": "Commute Buddy",
+  "short_name": "Commute",
+  "description": "PATH train commute tracker for Hoboken ↔ 23 St",
+  "start_url": "/commute-buddy/",
+  "display": "standalone",
+  "background_color": "#0d0d14",
+  "theme_color": "#0d0d14",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
