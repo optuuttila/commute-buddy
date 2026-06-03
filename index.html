@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Commute Buddy</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0d0d14;
+      --surface:      #16161f;
+      --border:       #252535;
+      --text:         #e8e8f0;
+      --muted:        #6b6b88;
+      --green:        #22c55e;
+      --yellow:       #f59e0b;
+      --red:          #ef4444;
+      --path-blue:    #4d92fb;
+      --path-orange:  #ff9900;
+      --radius:       14px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.25rem;
+      padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+    }
+
+    /* ── App wrapper — constrains everything to the same width ── */
+    .app-wrapper {
+      width: 100%;
+      max-width: 420px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Card shell ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      width: 100%;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.85rem 1.1rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .route-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .route-label span { color: var(--path-blue); }
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* ── Primary status ── */
+    .primary {
+      padding: 1.6rem 1.1rem 1.3rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .status-label {
+      font-size: clamp(2rem, 9vw, 2.8rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      margin-bottom: 0.45rem;
+      transition: color 0.3s;
+    }
+    .status-label.green  { color: var(--green); }
+    .status-label.yellow { color: var(--yellow); }
+    .status-label.red    { color: var(--red); }
+
+    .primary-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 0.45rem;
+    }
+    .primary-row .status-label { margin-bottom: 0; }
+    .signal-chip {
+      display: inline-block;
+      font-size: clamp(1.4rem, 6vw, 1.8rem);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      text-transform: uppercase;
+      padding-bottom: 0.1rem; /* optical baseline alignment */
+    }
+    .signal-chip.sig-wait { color: var(--muted); }
+    .signal-chip.sig-go   { color: var(--path-orange); }
+    .detail-sep { margin: 0 0.25em; color: var(--border); }
+
+    .next-train-detail {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .next-train-detail strong { color: var(--text); font-weight: 500; }
+
+    /* ── Train list ── */
+    .trains { padding: 0.35rem 0; }
+    .train-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.6rem 1.1rem;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+    .train-row:last-child { border-bottom: none; }
+    .train-row.is-next { background: rgba(255,255,255,0.03); }
+
+    .train-time {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .train-time .dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .leave-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 99px;
+      white-space: nowrap;
+      letter-spacing: 0.02em;
+    }
+    .leave-badge.green  { background: rgba(34,197,94,0.15);  color: var(--green); }
+    .leave-badge.yellow { background: rgba(245,158,11,0.15); color: var(--yellow); }
+    .leave-badge.red    { background: rgba(239,68,68,0.18);  color: var(--red); }
+
+    /* ── Footer ── */
+    .card-footer {
+      padding: 0.65rem 1.1rem;
+      font-size: 0.72rem;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── Walk reminder ── */
+    .walk-row {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.7rem 1.1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .walk-row svg { flex-shrink: 0; }
+
+    /* ── Idle state ── */
+    .idle-card {
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+    }
+    .idle-clock {
+      font-size: clamp(3rem, 14vw, 4.5rem);
+      font-weight: 200;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 0.5rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .idle-sub {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+    }
+    .next-window-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(77,146,251,0.12);
+      color: var(--path-blue);
+      border: 1px solid rgba(77,146,251,0.2);
+      border-radius: 99px;
+      padding: 0.35rem 0.85rem;
+      font-size: 0.78rem;
+      font-weight: 500;
+    }
+
+    /* ── Error ── */
+    .error-card {
+      text-align: center;
+      padding: 2rem 1.5rem;
+    }
+    .error-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--red);
+      margin-bottom: 0.4rem;
+    }
+    .error-msg {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 1.2rem;
+    }
+    .retry-btn {
+      background: var(--border);
+      color: var(--text);
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 1.2rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .retry-btn:hover { background: #333348; }
+
+    /* ── Loading skeleton ── */
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface) 25%, var(--border) 50%, var(--surface) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: 6px;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .skeleton-line { height: 1em; margin-bottom: 0.5rem; }
+
+    /* ── Top bar ── */
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 0.75rem;
+    }
+    .wordmark {
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.5;
+    }
+
+    /* ── Mode toggle ── */
+    .mode-toggle {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .mode-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-family: inherit;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.75rem;
+      border-radius: 99px;
+      cursor: pointer;
+      transition: background 0.18s, color 0.18s;
+    }
+    .mode-btn:hover { color: var(--text); }
+    .mode-btn.active {
+      background: var(--path-blue);
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-wrapper">
+  <div class="top-bar">
+    <p class="wordmark">Commute Buddy</p>
+    <div class="mode-toggle">
+      <button class="mode-btn" id="btn-auto" onclick="setMode('auto')">Auto</button>
+      <button class="mode-btn" id="btn-on"   onclick="setMode('on')">On</button>
+    </div>
+  </div>
+  <div id="root"></div>
+</div>
+
+<script src="config.js"></script>
+<script>
+
+// ─────────────────────────────────────────────
+// Time helpers
+// ─────────────────────────────────────────────
+function toMinutes(hhmm) {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function nowMinutes() {
+  const d = new Date();
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+function formatClock(date) {
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+function formatClockSeconds(date) {
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+}
+
+function arrivalTime(secondsFromNow) {
+  return formatClock(new Date(Date.now() + secondsFromNow * 1000));
+}
+
+// ─────────────────────────────────────────────
+// Mode  ('auto' | 'on')
+// ─────────────────────────────────────────────
+let mode = localStorage.getItem('commute-mode') || 'auto';
+
+function setMode(newMode) {
+  mode = newMode;
+  localStorage.setItem('commute-mode', mode);
+  updateToggleUI();
+  tick();
+}
+
+function updateToggleUI() {
+  document.getElementById('btn-auto').classList.toggle('active', mode === 'auto');
+  document.getElementById('btn-on').classList.toggle('active',   mode === 'on');
+}
+
+// ─────────────────────────────────────────────
+// Direction detection
+// ─────────────────────────────────────────────
+function getDirection() {
+  if (mode === 'on') {
+    // Force active: morning side of day → to work, afternoon/evening → to home
+    return new Date().getHours() < 12 ? 'TO_WORK' : 'TO_HOME';
+  }
+  const m = nowMinutes();
+  if (m >= toMinutes(CONFIG.morningWindow.start) && m <= toMinutes(CONFIG.morningWindow.end)) {
+    return 'TO_WORK';
+  }
+  if (m >= toMinutes(CONFIG.eveningWindow.start) && m <= toMinutes(CONFIG.eveningWindow.end)) {
+    return 'TO_HOME';
+  }
+  return null;
+}
+
+function nextWindowLabel() {
+  const m = nowMinutes();
+  const ms = toMinutes(CONFIG.morningWindow.start);
+  const es = toMinutes(CONFIG.eveningWindow.start);
+  if (m < ms) return `Morning commute window opens at ${CONFIG.morningWindow.start}`;
+  if (m < es) return `Evening commute window opens at ${CONFIG.eveningWindow.start}`;
+  return null;
+}
+
+// ─────────────────────────────────────────────
+// API
+// ─────────────────────────────────────────────
+async function fetchData() {
+  const r = await fetch(API_URL);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return await r.json();
+}
+
+function extractTrains(data, direction) {
+  const stationCode = direction === 'TO_WORK' ? CONFIG.homeStation : CONFIG.workStation;
+  const dirLabel    = direction === 'TO_WORK' ? 'ToNY' : 'ToNJ';
+
+  const station = (data.results ?? []).find(r => r.consideredStation === stationCode);
+  if (!station) return [];
+
+  const dest = (station.destinations ?? []).find(d => d.label === dirLabel);
+  if (!dest) return [];
+
+  let messages = dest.messages ?? [];
+
+  // Morning: only take 33S-bound trains — WTC trains skip 23rd St entirely
+  if (direction === 'TO_WORK') {
+    messages = messages.filter(m => m.target === '33S');
+  }
+
+  return messages
+    .map(m => ({
+      seconds:    parseInt(m.secondsToArrival, 10),
+      timeText:   m.arrivalTimeMessage,
+      headSign:   m.headSign,
+      lineColor:  m.lineColor,
+      updatedAt:  m.lastUpdated,
+    }))
+    .sort((a, b) => a.seconds - b.seconds)
+    .slice(0, CONFIG.trainCount);
+}
+
+// ─────────────────────────────────────────────
+// Status
+// ─────────────────────────────────────────────
+function getStatus(seconds, walkMins) {
+  const trainMins  = seconds / 60;
+  const bufferMins = trainMins - walkMins;
+
+  if (bufferMins <= 0) {
+    return { label: 'Leave Now', color: 'red',    buffer: bufferMins };
+  } else if (bufferMins < 4) {
+    const n = Math.ceil(bufferMins);
+    return { label: `Leave in ${n} min`, color: 'yellow', buffer: bufferMins };
+  } else {
+    const n = Math.ceil(bufferMins);
+    return { label: `Leave in ${n} min`, color: 'green',  buffer: bufferMins };
+  }
+}
+
+// ─────────────────────────────────────────────
+// Signal (On mode)  Wait → (Go) → Go → Go!
+// ─────────────────────────────────────────────
+function getSignal(bufferMins) {
+  if (bufferMins > 3)  return { text: 'Wait',  color: 'sig-wait' };
+  return                      { text: 'Go',    color: 'sig-go'   };
+}
+
+// ─────────────────────────────────────────────
+// Rendering
+// ─────────────────────────────────────────────
+function colorDot(lineColor) {
+  // lineColor is comma-separated hex: "4D92FB,FF9900"
+  const colors = lineColor.split(',');
+  if (colors.length === 1) {
+    return `<span class="dot" style="background:#${colors[0]}"></span>`;
+  }
+  return `<span class="dot" style="background:linear-gradient(90deg,#${colors[0]} 50%,#${colors[1]} 50%)"></span>`;
+}
+
+function renderActive(direction, trains) {
+  const walkMins   = direction === 'TO_WORK' ? CONFIG.walkFromHome : CONFIG.walkFromWork;
+  const fromLabel  = direction === 'TO_WORK' ? 'Hoboken' : '23 St';
+  const toLabel    = direction === 'TO_WORK' ? '23 St' : 'Hoboken';
+  const next       = trains[0];
+  const status     = getStatus(next.seconds, walkMins);
+  const trainAt    = arrivalTime(next.seconds);
+
+  const trainsHTML = trains.map((t, i) => {
+    const s = getStatus(t.seconds, walkMins);
+    const bufLabel = s.buffer <= 0
+      ? 'Leave now'
+      : `Leave in ${Math.ceil(s.buffer)}m`;
+    return `
+      <div class="train-row ${i === 0 ? 'is-next' : ''}">
+        <span class="train-time">${colorDot(t.lineColor)}${arrivalTime(t.seconds)}</span>
+        <span class="leave-badge ${s.color}">${bufLabel}</span>
+      </div>`;
+  }).join('');
+
+  const updatedAt = next.updatedAt
+    ? formatClockSeconds(new Date(next.updatedAt))
+    : '—';
+
+  return `
+    <div class="card">
+      <div class="card-header">
+        <span class="route-label"><span>${fromLabel}</span> &rarr; ${toLabel}</span>
+        <span class="live-dot" title="Live"></span>
+      </div>
+
+      <div class="primary">
+        ${mode === 'on' ? (() => {
+          const sig = getSignal(status.buffer);
+          return `
+            <div class="primary-row">
+              <div class="status-label" id="active-clock">${formatClock(new Date())}</div>
+              <div class="signal-chip ${sig.color}">${sig.text}</div>
+            </div>
+            <div class="next-train-detail">
+              Train at <strong>${trainAt}</strong>
+              <span class="detail-sep">·</span>walk <strong>${walkMins} min</strong>
+            </div>`;
+        })() : `
+          <div class="status-label ${status.color}">${status.label}</div>
+          <div class="next-train-detail">
+            Next train at <strong>${trainAt}</strong>
+            &mdash; walk is <strong>${walkMins} min</strong>
+          </div>`}
+      </div>
+
+      <div class="trains">
+        ${trainsHTML}
+      </div>
+
+      <div class="card-footer">
+        <span>Data at ${updatedAt}</span>
+        <span>Refresh in <span id="cd">${Math.round(CONFIG.refreshMs / 1000)}</span>s</span>
+      </div>
+    </div>`;
+}
+
+function renderIdle() {
+  const clock = formatClock(new Date());
+  const next  = nextWindowLabel();
+  return `
+    <div class="card">
+      <div class="idle-card">
+        <div class="idle-clock" id="idle-clock">${clock}</div>
+        <div class="idle-sub">No active commute window</div>
+        ${next ? `<div class="next-window-pill">
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+            <circle cx="5" cy="5" r="4" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M5 2.5V5l1.5 1.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+          </svg>
+          ${next}
+        </div>` : ''}
+      </div>
+    </div>`;
+}
+
+function renderLoading() {
+  return `
+    <div class="card" style="padding:1.5rem 1.1rem">
+      <div class="skeleton skeleton-line" style="width:55%;height:0.75rem;margin-bottom:1.2rem"></div>
+      <div class="skeleton skeleton-line" style="width:70%;height:2.5rem;margin-bottom:0.6rem"></div>
+      <div class="skeleton skeleton-line" style="width:45%;height:0.8rem;margin-bottom:1.5rem"></div>
+      <div class="skeleton skeleton-line" style="width:100%;height:1rem;margin-bottom:0.6rem"></div>
+      <div class="skeleton skeleton-line" style="width:100%;height:1rem;margin-bottom:0.6rem"></div>
+      <div class="skeleton skeleton-line" style="width:100%;height:1rem"></div>
+    </div>`;
+}
+
+function renderError(msg) {
+  return `
+    <div class="card">
+      <div class="error-card">
+        <div class="error-title">Could not load schedule</div>
+        <div class="error-msg">${msg}</div>
+        <button class="retry-btn" onclick="tick()">Try again</button>
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────
+// Main loop
+// ─────────────────────────────────────────────
+const root = document.getElementById('root');
+let refreshTimer    = null;
+let countdownTimer  = null;
+let activeClockTimer = null;
+
+function updateActiveClock() {
+  const el = document.getElementById('active-clock');
+  if (el) el.textContent = formatClock(new Date());
+}
+
+function startCountdown() {
+  clearInterval(countdownTimer);
+  let secs = Math.round(CONFIG.refreshMs / 1000);
+  countdownTimer = setInterval(() => {
+    const el = document.getElementById('cd');
+    if (el) el.textContent = --secs;
+  }, 1000);
+}
+
+function updateIdleClock() {
+  const el = document.getElementById('idle-clock');
+  if (el) el.textContent = formatClock(new Date());
+}
+
+async function tick() {
+  clearInterval(countdownTimer);
+  clearInterval(refreshTimer);
+  clearInterval(activeClockTimer);
+
+  const direction = getDirection();
+
+  if (!direction) {
+    root.innerHTML = renderIdle();
+    // Update idle clock every second
+    clearInterval(refreshTimer);
+    refreshTimer = setInterval(updateIdleClock, 1000);
+    return;
+  }
+
+  // Show skeleton on first load (no previous active content)
+  if (!root.querySelector('.card .primary')) {
+    root.innerHTML = renderLoading();
+  }
+
+  try {
+    const data   = await fetchData();
+    const trains = extractTrains(data, direction);
+
+    if (trains.length === 0) {
+      root.innerHTML = renderError('No trains found for this route. Service may be suspended.');
+      return;
+    }
+
+    root.innerHTML = renderActive(direction, trains);
+    startCountdown();
+    if (mode === 'on') activeClockTimer = setInterval(updateActiveClock, 1000);
+    refreshTimer = setInterval(tick, CONFIG.refreshMs);
+  } catch (err) {
+    root.innerHTML = renderError(err.message ?? 'Network error');
+    // Retry after 60s on error
+    refreshTimer = setTimeout(tick, 60_000);
+  }
+}
+
+updateToggleUI();
+tick();
+</script>
+</body>
+</html>
