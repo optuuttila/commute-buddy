@@ -138,7 +138,10 @@ Returns all PATH stations in a single JSON payload, updated every ~30 seconds. T
 
 ## Roadmap
 
-- [ ] Deploy Cloudflare Worker and retire local proxy
+- [x] Web app POC
+- [x] Deploy Cloudflare Worker — retire local proxy
+- [x] Host on GitHub Pages — accessible from any browser
+- [x] PWA support — installable on iPhone home screen
 - [ ] Settings UI (no more editing `config.js` by hand)
 - [ ] macOS menu bar app (SwiftUI + `MenuBarExtra`)
 - [ ] iOS app with Lock Screen / Home Screen widget (WidgetKit)
