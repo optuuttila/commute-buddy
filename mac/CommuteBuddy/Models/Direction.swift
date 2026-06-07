@@ -1,6 +1,6 @@
 import Foundation
 
-enum Direction {
+enum Direction: Equatable {
     case toWork   // HOB → 23S (morning)
     case toHome   // 23S → HOB (evening)
 

@@ -2,26 +2,26 @@ import Foundation
 
 struct Train: Identifiable {
     let id = UUID()
-    let secondsToArrival: Int
+    /// Absolute departure time, computed once at fetch.
+    /// Using a stored Date (not a computed one) means bufferMinutes
+    /// stays accurate as time passes between refreshes.
+    let arrivalTime: Date
     let headSign: String
-    let lineColors: [Color]   // parsed from "4D92FB,FF9900"
+    let lineColors: [Color]
     let lastUpdated: Date
 
     var minutesToArrival: Double {
-        Double(secondsToArrival) / 60
+        arrivalTime.timeIntervalSinceNow / 60
     }
 
-    var arrivalTime: Date {
-        Date().addingTimeInterval(TimeInterval(secondsToArrival))
-    }
-
-    /// Signed minutes remaining before you must leave.
-    /// Negative = you should have left already.
+    /// Signed minutes before you must leave.
+    /// Negative means you should have left already.
     func bufferMinutes(walkMinutes: Int) -> Double {
         minutesToArrival - Double(walkMinutes)
     }
 
-    // MARK: - Hex colour helper
+    // MARK: - Line colour helper
+
     struct Color {
         let hex: String
         var nsColor: NSColor { NSColor(hex: hex) ?? .controlAccentColor }
@@ -29,6 +29,7 @@ struct Train: Identifiable {
 }
 
 // MARK: - NSColor hex init
+
 extension NSColor {
     convenience init?(hex: String) {
         var str = hex.trimmingCharacters(in: .alphanumerics.inverted)

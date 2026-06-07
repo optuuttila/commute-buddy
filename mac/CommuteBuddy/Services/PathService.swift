@@ -35,7 +35,7 @@ actor PathService {
 
     func fetchTrains(direction: Direction) async throws -> [Train] {
         var request = URLRequest(url: Config.apiURL)
-        // URLSession is not bound by CORS — set Referer directly.
+        // URLSession is not bound by CORS — we can set Referer freely.
         request.setValue(
             "https://www.panynj.gov/path/en/index.html",
             forHTTPHeaderField: "Referer"
@@ -74,20 +74,24 @@ actor PathService {
             messages = messages.filter { $0.target == "33S" }
         }
 
+        let fetchTime = Date()
+
         return messages
             .compactMap { msg -> Train? in
                 guard let seconds = Int(msg.secondsToArrival) else { return nil }
                 let colors = msg.lineColor
                     .split(separator: ",")
                     .map { Train.Color(hex: String($0)) }
+                // Store absolute arrival time once — bufferMinutes stays accurate
+                // as time passes between refreshes.
                 return Train(
-                    secondsToArrival: seconds,
+                    arrivalTime: fetchTime.addingTimeInterval(TimeInterval(seconds)),
                     headSign: msg.headSign,
                     lineColors: colors,
-                    lastUpdated: Date()
+                    lastUpdated: fetchTime
                 )
             }
-            .sorted { $0.secondsToArrival < $1.secondsToArrival }
+            .sorted { $0.arrivalTime < $1.arrivalTime }
             .prefix(Config.trainCount)
             .map { $0 }
     }
