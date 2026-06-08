@@ -13,7 +13,7 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		EF286AC62FD350CE001B42FA /* Commute Buddy */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Commute Buddy";
+			path = CommuteBuddy;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
